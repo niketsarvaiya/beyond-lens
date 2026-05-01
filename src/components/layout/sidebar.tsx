@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin, useCurrentUser } from "@/store/lens-store";
 import { UserAvatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
@@ -22,8 +22,8 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname    = usePathname();
-  const isAdmin     = useLensStore((s) => s.isAdmin());
-  const currentUser = useLensStore((s) => s.currentUser());
+  const isAdmin     = useIsAdmin();
+  const currentUser = useCurrentUser();
   const open        = useLensStore((s) => s.sidebarOpen);
   const setOpen     = useLensStore((s) => s.setSidebarOpen);
 

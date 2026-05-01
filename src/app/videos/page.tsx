@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/header";
 import { VideoCard } from "@/components/video/video-card";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { VIDEO_STATUSES, STATUS_LABELS, PLATFORMS, CAMPAIGNS } from "@/lib/constants";
 import type { VideoStatus, Platform } from "@/types";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { UploadPanel } from "@/components/video/upload-panel";
 
 export default function VideosPage() {
   const videos  = useLensStore((s) => s.videos);
-  const isAdmin = useLensStore((s) => s.isAdmin());
+  const isAdmin = useIsAdmin();
   const [showUpload, setShowUpload] = useState(false);
 
   const [search,   setSearch]   = useState("");

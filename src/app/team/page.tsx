@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/header";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { UserAvatar } from "@/components/ui/avatar";
 import { USERS } from "@/lib/constants";
 import { MOCK_DASHBOARD_STATS } from "@/lib/mock-data";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Shield, Hammer } from "lucide-react";
 
 export default function TeamPage() {
-  const isAdmin = useLensStore((s) => s.isAdmin());
+  const isAdmin = useIsAdmin();
   const videos  = useLensStore((s) => s.videos);
 
   if (!isAdmin) {

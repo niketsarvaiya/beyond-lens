@@ -2,13 +2,13 @@ export const USERS = [
   { id: "niket",   name: "Niket",   role: "admin",     avatar: "N", color: "#7C3AED" },
   { id: "payal",   name: "Payal",   role: "admin",     avatar: "P", color: "#0EA5E9" },
   { id: "ishita",  name: "Ishita",  role: "admin",     avatar: "I", color: "#10B981" },
-  { id: "maulik",  name: "Maulik",  role: "execution", avatar: "M", color: "#F59E0B" },
+  { id: "maulik",  name: "Maulik",  role: "admin",     avatar: "M", color: "#F59E0B" },
   { id: "muskan",  name: "Muskan",  role: "execution", avatar: "M", color: "#EC4899" },
   { id: "aryan",   name: "Aryan",   role: "execution", avatar: "A", color: "#6366F1" },
 ] as const;
 
-export const ADMIN_IDS = ["niket", "payal", "ishita"] as const;
-export const EXEC_IDS  = ["maulik", "muskan", "aryan"] as const;
+export const ADMIN_IDS = ["niket", "payal", "ishita", "maulik"] as const;
+export const EXEC_IDS  = ["muskan", "aryan"] as const;
 
 export const VIDEO_STATUSES = [
   "uploaded",

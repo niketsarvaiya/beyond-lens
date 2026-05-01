@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/header";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { StatusBadge } from "@/components/ui/badge";
 import { UserChip } from "@/components/ui/avatar";
@@ -30,7 +30,7 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-zinc-300" }: {
 
 export default function DashboardPage() {
   const videos  = useLensStore((s) => s.videos);
-  const isAdmin = useLensStore((s) => s.isAdmin());
+  const isAdmin = useIsAdmin();
   const reviews = useLensStore((s) => s.reviews);
   const stats   = MOCK_DASHBOARD_STATS;
 

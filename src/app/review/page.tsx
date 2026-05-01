@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/header";
 import { ReviewPanel } from "@/components/review/review-panel";
 import { StatusBadge } from "@/components/ui/badge";
 import { ScoreRing, ConfidenceBar } from "@/components/ui/score-ring";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
@@ -16,7 +16,7 @@ export default function ReviewPage() {
 
   const videos    = useLensStore((s) => s.videos);
   const reviews   = useLensStore((s) => s.reviews);
-  const isAdmin   = useLensStore((s) => s.isAdmin());
+  const isAdmin   = useIsAdmin();
 
   if (!isAdmin) {
     return (

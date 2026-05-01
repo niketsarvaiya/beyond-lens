@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Header } from "@/components/layout/header";
 import { FeedbackThread } from "@/components/feedback/feedback-thread";
 import { StatusBadge } from "@/components/ui/badge";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { cn } from "@/lib/utils";
 import type { FeedbackStatus } from "@/types";
 import Link from "next/link";
@@ -23,7 +23,7 @@ export default function FeedbackPage() {
 
   const videos   = useLensStore((s) => s.videos);
   const feedback = useLensStore((s) => s.feedback);
-  const isAdmin  = useLensStore((s) => s.isAdmin());
+  const isAdmin  = useIsAdmin();
   const currentUserId = useLensStore((s) => s.currentUserId);
 
   // Flatten all feedback across all videos

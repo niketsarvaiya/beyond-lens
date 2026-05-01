@@ -5,7 +5,7 @@ import { formatRelativeTime, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/avatar";
 import { ScoreRing } from "@/components/ui/score-ring";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import type { Video } from "@/types";
 import { Clock, GitBranch, Calendar } from "lucide-react";
 
@@ -14,9 +14,10 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ video }: VideoCardProps) {
-  const review   = useLensStore((s) => s.getReview(video.id));
-  const isAdmin  = useLensStore((s) => s.isAdmin());
-  const feedback = useLensStore((s) => s.feedback[video.id] ?? []);
+  const review      = useLensStore((s) => s.reviews[video.id]);
+  const isAdmin     = useIsAdmin();
+  const feedbackMap = useLensStore((s) => s.feedback);
+  const feedback    = feedbackMap[video.id] ?? [];
   const openFeedback = feedback.filter((f) => f.status !== "done").length;
 
   return (

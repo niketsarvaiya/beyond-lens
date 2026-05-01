@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/layout/header";
 import { TasteProfilePanel } from "@/components/learning/taste-profile-panel";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { MOCK_LEARNING_ENTRIES } from "@/lib/mock-data";
 import { detectRecurringPatterns } from "@/lib/ai/learning-pipeline";
 import { formatDate } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { UserChip } from "@/components/ui/avatar";
 import { Brain, Lightbulb, TrendingDown, TrendingUp } from "lucide-react";
 
 export default function LearningPage() {
-  const isAdmin = useLensStore((s) => s.isAdmin());
+  const isAdmin = useIsAdmin();
 
   if (!isAdmin) {
     return (

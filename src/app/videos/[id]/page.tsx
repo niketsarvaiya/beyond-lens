@@ -9,7 +9,7 @@ import { ScoreRing, ConfidenceBar } from "@/components/ui/score-ring";
 import { ReviewPanel } from "@/components/review/review-panel";
 import { FeedbackThread } from "@/components/feedback/feedback-thread";
 import { UploadPanel } from "@/components/video/upload-panel";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { TimestampIssue } from "@/types";
@@ -29,10 +29,13 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
   const [newFeedbackText, setNewFeedbackText] = useState("");
   const [newFeedbackPriority, setNewFeedbackPriority] = useState<"must_fix" | "nice_to_improve">("must_fix");
 
-  const video         = useLensStore((s) => s.getVideo(id));
-  const review        = useLensStore((s) => s.getReview(id));
-  const feedback      = useLensStore((s) => s.feedback[id] ?? []);
-  const isAdmin       = useLensStore((s) => s.isAdmin());
+  const videos        = useLensStore((s) => s.videos);
+  const video         = videos.find((v) => v.id === id);
+  const reviews       = useLensStore((s) => s.reviews);
+  const review        = reviews[id];
+  const feedbackMap   = useLensStore((s) => s.feedback);
+  const feedback      = feedbackMap[id] ?? [];
+  const isAdmin       = useIsAdmin();
   const currentUserId = useLensStore((s) => s.currentUserId);
   const addFeedback   = useLensStore((s) => s.addFeedbackItem);
   const updateStatus  = useLensStore((s) => s.updateVideoStatus);

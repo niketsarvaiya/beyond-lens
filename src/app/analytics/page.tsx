@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/layout/header";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { MOCK_SOCIAL_METRICS } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Users, Eye, Heart, ExternalLink } from "lucide-react";
@@ -33,7 +33,7 @@ function MetricCard({ label, value, growth, icon: Icon }: {
 }
 
 export default function AnalyticsPage() {
-  const isAdmin = useLensStore((s) => s.isAdmin());
+  const isAdmin = useIsAdmin();
 
   if (!isAdmin) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useLensStore } from "@/store/lens-store";
+import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { UserAvatar, UserChip } from "@/components/ui/avatar";
 import { PriorityBadge } from "@/components/ui/badge";
 import { formatRelativeTime } from "@/lib/utils";
@@ -32,7 +32,7 @@ export function FeedbackThread({ item, videoId }: FeedbackThreadProps) {
   const [replyText, setReplyText]     = useState("");
   const [expanded, setExpanded]       = useState(true);
   const currentUserId   = useLensStore((s) => s.currentUserId);
-  const isAdmin         = useLensStore((s) => s.isAdmin());
+  const isAdmin         = useIsAdmin();
   const updateStatus    = useLensStore((s) => s.updateFeedbackStatus);
   const addReply        = useLensStore((s) => s.addReply);
 
