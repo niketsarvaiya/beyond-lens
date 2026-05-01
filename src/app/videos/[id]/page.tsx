@@ -109,14 +109,32 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
         {/* Left: video + meta */}
         <div className="w-80 shrink-0 border-r border-white/[0.07] overflow-y-auto">
           <div className="p-4 space-y-4">
-            {/* Thumbnail */}
-            <div className="aspect-video rounded-xl overflow-hidden bg-zinc-900">
-              {video.thumbnailUrl ? (
-                <img src={video.thumbnailUrl} alt={video.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">No preview</div>
-              )}
-            </div>
+            {/* Thumbnail / View Video */}
+            {video.versions[video.currentVersion - 1]?.driveUrl ? (
+              <a
+                href={video.versions[video.currentVersion - 1].driveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block aspect-video rounded-xl overflow-hidden bg-zinc-900 relative group"
+              >
+                {video.thumbnailUrl
+                  ? <img src={video.thumbnailUrl} alt={video.name} className="w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                  : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">No preview</div>
+                }
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1.5 bg-black/70 text-white text-xs font-medium rounded-lg px-3 py-1.5">
+                    <ExternalLink size={12} /> View Video
+                  </div>
+                </div>
+              </a>
+            ) : (
+              <div className="aspect-video rounded-xl overflow-hidden bg-zinc-900">
+                {video.thumbnailUrl
+                  ? <img src={video.thumbnailUrl} alt={video.name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">No preview</div>
+                }
+              </div>
+            )}
 
             {/* Status */}
             <div className="flex items-center justify-between">

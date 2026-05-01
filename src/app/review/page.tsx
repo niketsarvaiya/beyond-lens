@@ -9,14 +9,45 @@ import { useLensStore, useIsAdmin } from "@/store/lens-store";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils";
 import Link from "next/link";
-import { Star, Zap, AlertCircle } from "lucide-react";
+import { Star, Zap, AlertCircle, Loader2 } from "lucide-react";
 
 export default function ReviewPage() {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [triggering, setTriggering]           = useState<string | null>(null);
 
   const videos    = useLensStore((s) => s.videos);
   const reviews   = useLensStore((s) => s.reviews);
+  const setReview = useLensStore((s) => s.setReview);
+  const updateStatus = useLensStore((s) => s.updateVideoStatus);
   const isAdmin   = useIsAdmin();
+
+  const triggerReview = async (video: typeof videos[0]) => {
+    if (triggering) return;
+    setTriggering(video.id);
+    try {
+      const res = await fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId:   video.id,
+          videoName: video.name,
+          campaign:  video.campaign,
+          platform:  video.platform,
+          version:   video.currentVersion,
+          frameUrls: [],
+        }),
+      });
+      if (!res.ok) throw new Error("Review failed");
+      const { review } = await res.json();
+      setReview(video.id, review);
+      updateStatus(video.id, "ai_reviewed");
+      setSelectedVideoId(video.id);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTriggering(null);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -52,8 +83,16 @@ export default function ReviewPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-400 truncate">{video.name}</p>
                   </div>
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Zap size={12} className="text-violet-400" />
+                  <button
+                    onClick={() => triggerReview(video)}
+                    disabled={triggering === video.id}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    title="Run AI Review"
+                  >
+                    {triggering === video.id
+                      ? <Loader2 size={12} className="text-violet-400 animate-spin" />
+                      : <Zap size={12} className="text-violet-400" />
+                    }
                   </button>
                 </div>
               ))}
