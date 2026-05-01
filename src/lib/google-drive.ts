@@ -15,22 +15,37 @@
  */
 
 import { google } from "googleapis";
+import { JWT } from "google-auth-library";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-function getDriveClient() {
+function getCredentials() {
   const email      = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
   if (!email || !privateKey) {
     throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY");
   }
+  return { email, privateKey };
+}
 
+function getDriveClient() {
+  const { email, privateKey } = getCredentials();
   const auth = new google.auth.GoogleAuth({
     credentials: { client_email: email, private_key: privateKey },
     scopes: ["https://www.googleapis.com/auth/drive"],
   });
-
   return google.drive({ version: "v3", auth });
+}
+
+async function getAccessToken(): Promise<string> {
+  const { email, privateKey } = getCredentials();
+  const jwt = new JWT({
+    email,
+    key: privateKey,
+    scopes: ["https://www.googleapis.com/auth/drive"],
+  });
+  const { token } = await jwt.getAccessToken();
+  if (!token) throw new Error("Failed to obtain Google Drive access token");
+  return token;
 }
 
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? "";
@@ -94,8 +109,7 @@ export async function createResumableUploadUrl(params: {
   sizeBytes: number;
 }): Promise<{ uploadUrl: string; fileId: string }> {
   const drive = getDriveClient();
-  const auth  = drive.context._options.auth as ReturnType<typeof google.auth.GoogleAuth.prototype.fromJSON>;
-  const token = await (drive.context._options.auth as any).getAccessToken();
+  const token = await getAccessToken();
 
   // Create a placeholder file first to get the fileId
   const placeholder = await drive.files.create({
@@ -114,7 +128,7 @@ export async function createResumableUploadUrl(params: {
     {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${token.token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         "X-Upload-Content-Type": params.mimeType,
         "X-Upload-Content-Length": String(params.sizeBytes),
@@ -123,8 +137,13 @@ export async function createResumableUploadUrl(params: {
     }
   );
 
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text();
+    throw new Error(`Drive resumable init failed (${uploadRes.status}): ${errText}`);
+  }
+
   const uploadUrl = uploadRes.headers.get("location");
-  if (!uploadUrl) throw new Error("Failed to get resumable upload URL from Google Drive");
+  if (!uploadUrl) throw new Error("Drive did not return a resumable upload URL");
 
   return { uploadUrl, fileId };
 }
