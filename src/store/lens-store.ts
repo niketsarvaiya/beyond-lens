@@ -115,6 +115,7 @@ export const useLensStore = create<LensStore>()(
     }),
     {
       name: "beyond-lens-store",
+      skipHydration: true,
       partialize: (state) => ({
         currentUserId: state.currentUserId,
         sidebarOpen: state.sidebarOpen,
