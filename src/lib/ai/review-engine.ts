@@ -1,18 +1,16 @@
 /**
- * AI Review Engine
+ * AI Review Engine — powered by Claude (claude-sonnet-4-6)
  *
- * Orchestrates video analysis using OpenAI Vision.
  * Steps:
- *   1. Extract frame URLs (from Drive) every ~2 seconds
- *   2. Call GPT-4o Vision with structured prompt + taste profile context
- *   3. Parse structured JSON response into AIReview
+ *   1. Receive frame URLs (from Drive/direct link)
+ *   2. Call Claude with vision + structured prompt + taste profile context
+ *   3. Parse JSON response into AIReview
  *   4. Apply taste profile weights to compute final scores
- *   5. Calculate confidence and taste alignment
  *
- * In development / mock mode (no API key), returns deterministic mock data.
+ * Mock mode is used when ANTHROPIC_API_KEY is not set.
  */
 
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { AIReview, TasteProfile } from "@/types";
 import { MOCK_AI_REVIEWS } from "@/lib/mock-data";
 import {
@@ -21,9 +19,8 @@ import {
   calculateTasteAlignment,
 } from "./taste-profile";
 
-const isDev = !process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-mock";
+const isDev = !process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === "sk-mock";
 
-/** Build the system prompt injected with the active taste profile rules. */
 function buildSystemPrompt(profile: TasteProfile): string {
   const rules = profile.rules
     .sort((a, b) => b.weight - a.weight)
@@ -52,11 +49,10 @@ Score each dimension from 0–10, where:
 - Tone: aspirational, not instructional
 - Every frame should look like it belongs in an AD magazine
 
-## Output Format (strict JSON):
-Return a JSON object matching the AIReviewOutput type. No markdown, no prose outside the JSON.`;
+## Output Format:
+Return ONLY a valid JSON object. No markdown fences, no prose outside the JSON.`;
 }
 
-/** User prompt with the actual video context. */
 function buildUserPrompt(videoName: string, campaign: string, platform: string): string {
   return `Review this ${platform} video: "${videoName}" (Campaign: ${campaign})
 
@@ -64,18 +60,21 @@ Analyze the provided frames and return a JSON object with this exact structure:
 {
   "summary": "2–3 sentence overall assessment",
   "dimensions": {
-    "luxury_feel": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "visual_composition": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "subtitle_readability": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "color_contrast": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "edit_flow": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "hook_strength": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "content_clarity": { "score": 0-10, "reasoning": "...", "issues": [] },
-    "brand_fit": { "score": 0-10, "reasoning": "...", "issues": [] }
+    "luxury_feel":           { "score": 0-10, "reasoning": "...", "issues": [] },
+    "visual_composition":    { "score": 0-10, "reasoning": "...", "issues": [] },
+    "subtitle_readability":  { "score": 0-10, "reasoning": "...", "issues": [] },
+    "color_contrast":        { "score": 0-10, "reasoning": "...", "issues": [] },
+    "edit_flow":             { "score": 0-10, "reasoning": "...", "issues": [] },
+    "hook_strength":         { "score": 0-10, "reasoning": "...", "issues": [] },
+    "content_clarity":       { "score": 0-10, "reasoning": "...", "issues": [] },
+    "brand_fit":             { "score": 0-10, "reasoning": "...", "issues": [] }
   }
 }
 
-Each issue in the issues array must have: { "timestamp": "0:XX", "description": "...", "priority": "must_fix|nice_to_improve", "suggestion": "..." }`;
+Each issue in the issues array must have:
+{ "timestamp": "0:XX", "description": "...", "priority": "must_fix|nice_to_improve", "suggestion": "..." }
+
+If no frame images are provided, evaluate based on the video name and campaign context alone, and note this in your summary.`;
 }
 
 interface RawAIOutput {
@@ -92,58 +91,54 @@ interface RawAIOutput {
   }>;
 }
 
-/**
- * Core review function. Pass in frame image URLs and video metadata.
- * Returns a fully structured AIReview.
- */
 export async function runAIReview(params: {
   videoId: string;
   videoName: string;
   campaign: string;
   platform: string;
   version: number;
-  frameUrls: string[];   // public URLs of extracted frames
+  frameUrls: string[];
   tasteProfile: TasteProfile;
 }): Promise<AIReview> {
   const { videoId, videoName, campaign, platform, version, frameUrls, tasteProfile } = params;
 
-  // ── Mock mode ────────────────────────────────────────────────────────────
+  // ── Mock mode ──────────────────────────────────────────────────────────────
   if (isDev) {
     const mock = MOCK_AI_REVIEWS[videoId];
     if (mock) return mock;
-
     return buildMockReview(videoId, version, tasteProfile);
   }
 
-  // ── Production: OpenAI Vision ─────────────────────────────────────────────
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // ── Production: Claude Vision ──────────────────────────────────────────────
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const imageMessages = frameUrls.slice(0, 20).map((url) => ({
-    type: "image_url" as const,
-    image_url: { url, detail: "low" as const },
+  const imageContent: Anthropic.ImageBlockParam[] = frameUrls.slice(0, 20).map((url) => ({
+    type: "image",
+    source: { type: "url", url },
   }));
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
     max_tokens: 2000,
-    response_format: { type: "json_object" },
+    system: buildSystemPrompt(tasteProfile),
     messages: [
-      { role: "system", content: buildSystemPrompt(tasteProfile) },
       {
         role: "user",
         content: [
           { type: "text", text: buildUserPrompt(videoName, campaign, platform) },
-          ...imageMessages,
+          ...imageContent,
         ],
       },
     ],
   });
 
-  const raw: RawAIOutput = JSON.parse(response.choices[0].message.content ?? "{}");
+  const text = response.content[0].type === "text" ? response.content[0].text : "{}";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  const raw: RawAIOutput = JSON.parse(jsonMatch?.[0] ?? "{}");
+
   return structureReview(raw, videoId, version, tasteProfile);
 }
 
-/** Convert raw GPT output into a fully structured AIReview. */
 function structureReview(
   raw: RawAIOutput,
   videoId: string,
@@ -151,7 +146,7 @@ function structureReview(
   profile: TasteProfile
 ): AIReview {
   const rawScores: Record<string, number> = {};
-  for (const [dim, data] of Object.entries(raw.dimensions)) {
+  for (const [dim, data] of Object.entries(raw.dimensions ?? {})) {
     rawScores[dim] = data.score;
   }
 
@@ -159,64 +154,59 @@ function structureReview(
   const confidenceScore  = calculateConfidence(profile);
   const tasteAlignment   = calculateTasteAlignment(rawScores, profile);
 
-  const allIssues = Object.values(raw.dimensions).flatMap((d) => d.issues ?? []);
-  const mustFix       = allIssues.filter((i) => i.priority === "must_fix");
+  const allIssues    = Object.values(raw.dimensions ?? {}).flatMap((d) => d.issues ?? []);
+  const mustFix      = allIssues.filter((i) => i.priority === "must_fix");
   const niceToImprove = allIssues.filter((i) => i.priority === "nice_to_improve");
 
   return {
-    id: `rev_${videoId}_v${version}_${Date.now()}`,
+    id:            `rev_${videoId}_v${version}_${Date.now()}`,
     videoId,
-    videoVersion: version,
-    generatedAt: new Date().toISOString(),
+    videoVersion:  version,
+    generatedAt:   new Date().toISOString(),
     overallScore,
     confidenceScore,
     tasteAlignment,
-    modelVersion: `taste-profile-v${profile.version}`,
-    summary: raw.summary,
-    dimensions: raw.dimensions as AIReview["dimensions"],
+    modelVersion:  `claude-sonnet-4-6 + taste-profile-v${profile.version}`,
+    summary:       raw.summary ?? "Review complete.",
+    dimensions:    raw.dimensions as AIReview["dimensions"],
     mustFix,
     niceToImprove,
   };
 }
 
-/** Deterministic mock for dev/demo mode. */
 function buildMockReview(videoId: string, version: number, profile: TasteProfile): AIReview {
   const rawScores = {
     luxury_feel: 6.5, visual_composition: 6.8, subtitle_readability: 5.0,
-    color_contrast: 7.0, edit_flow: 6.0, hook_strength: 6.5, content_clarity: 7.0, brand_fit: 6.5,
+    color_contrast: 7.0, edit_flow: 6.0, hook_strength: 6.5,
+    content_clarity: 7.0, brand_fit: 6.5,
   };
   const { overallScore } = applyTasteWeights(rawScores, profile);
 
   return {
-    id: `rev_${videoId}_v${version}_mock`,
+    id:            `rev_${videoId}_v${version}_mock`,
     videoId,
-    videoVersion: version,
-    generatedAt: new Date().toISOString(),
+    videoVersion:  version,
+    generatedAt:   new Date().toISOString(),
     overallScore,
     confidenceScore: calculateConfidence(profile),
-    tasteAlignment: calculateTasteAlignment(rawScores, profile),
-    modelVersion: `taste-profile-v${profile.version}`,
-    summary: "Auto-generated mock review. Upload a real video and add OPENAI_API_KEY for live analysis.",
+    tasteAlignment:  calculateTasteAlignment(rawScores, profile),
+    modelVersion:  `mock (add ANTHROPIC_API_KEY to enable Claude)`,
+    summary:       "Mock review — add ANTHROPIC_API_KEY to Vercel env vars to enable live Claude analysis.",
     dimensions: {
       luxury_feel:          { score: 6.5, reasoning: "Mock review.", issues: [] },
       visual_composition:   { score: 6.8, reasoning: "Mock review.", issues: [] },
-      subtitle_readability: { score: 5.0, reasoning: "Mock review.", issues: [{ timestamp: "0:10", description: "Mock: subtitle readability issue", priority: "must_fix", suggestion: "Improve contrast." }] },
+      subtitle_readability: { score: 5.0, reasoning: "Mock review.", issues: [{ timestamp: "0:10", description: "Subtitle readability needs improvement", priority: "must_fix", suggestion: "Improve contrast." }] },
       color_contrast:       { score: 7.0, reasoning: "Mock review.", issues: [] },
       edit_flow:            { score: 6.0, reasoning: "Mock review.", issues: [] },
       hook_strength:        { score: 6.5, reasoning: "Mock review.", issues: [] },
       content_clarity:      { score: 7.0, reasoning: "Mock review.", issues: [] },
       brand_fit:            { score: 6.5, reasoning: "Mock review.", issues: [] },
     },
-    mustFix: [{ timestamp: "0:10", description: "Mock: subtitle readability issue", priority: "must_fix", suggestion: "Improve contrast." }],
+    mustFix: [{ timestamp: "0:10", description: "Subtitle readability needs improvement", priority: "must_fix", suggestion: "Improve contrast." }],
     niceToImprove: [],
   };
 }
 
-/**
- * Pre-upload quality check.
- * Runs a lighter, faster check before final submission.
- * Returns predicted rejection reasons.
- */
 export async function preUploadCheck(params: {
   videoName: string;
   campaign: string;
@@ -232,7 +222,7 @@ export async function preUploadCheck(params: {
     };
   }
 
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const topRules = params.tasteProfile.rules
     .sort((a, b) => b.weight - a.weight)
@@ -240,24 +230,25 @@ export async function preUploadCheck(params: {
     .map((r) => `- ${r.rule}`)
     .join("\n");
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
     max_tokens: 800,
-    response_format: { type: "json_object" },
+    system: `You are a pre-submission gatekeeper for luxury video content. Be concise and direct.\nKey rules:\n${topRules}\nReturn ONLY JSON: { "score": 0-100, "likelyRejections": ["..."], "suggestions": ["..."] }`,
     messages: [
-      {
-        role: "system",
-        content: `You are a pre-submission gatekeeper for luxury video content. Be concise and direct.\nKey rules:\n${topRules}\nReturn JSON: { "score": 0-100, "likelyRejections": ["..."], "suggestions": ["..."] }`,
-      },
       {
         role: "user",
         content: [
           { type: "text", text: `Quick check for "${params.videoName}" (${params.platform}, ${params.campaign}). Will this pass review?` },
-          ...params.frameUrls.slice(0, 8).map((url) => ({ type: "image_url" as const, image_url: { url, detail: "low" as const } })),
+          ...params.frameUrls.slice(0, 8).map((url) => ({
+            type: "image" as const,
+            source: { type: "url" as const, url },
+          })),
         ],
       },
     ],
   });
 
-  return JSON.parse(response.choices[0].message.content ?? "{}");
+  const text = response.content[0].type === "text" ? response.content[0].text : "{}";
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  return JSON.parse(jsonMatch?.[0] ?? "{}");
 }
