@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { Video, AIReview, FeedbackItem, TasteProfile, User, UserId } from "@/types";
 import {
   MOCK_VIDEOS,
@@ -46,9 +45,7 @@ interface LensStore {
   setSidebarOpen: (open: boolean) => void;
 }
 
-export const useLensStore = create<LensStore>()(
-  persist(
-    (set, get) => ({
+export const useLensStore = create<LensStore>()((set, get) => ({
       // ── Auth ──────────────────────────────────────────────────────────────
       currentUserId: "niket",
       setCurrentUser: (id) => set({ currentUserId: id }),
@@ -112,14 +109,4 @@ export const useLensStore = create<LensStore>()(
       setSelectedVideoId: (id) => set({ selectedVideoId: id }),
       sidebarOpen: true,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
-    }),
-    {
-      name: "beyond-lens-store",
-      skipHydration: true,
-      partialize: (state) => ({
-        currentUserId: state.currentUserId,
-        sidebarOpen: state.sidebarOpen,
-      }),
-    }
-  )
-);
+}));

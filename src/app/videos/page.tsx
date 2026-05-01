@@ -7,11 +7,13 @@ import { useLensStore } from "@/store/lens-store";
 import { VIDEO_STATUSES, STATUS_LABELS, PLATFORMS, CAMPAIGNS } from "@/lib/constants";
 import type { VideoStatus, Platform } from "@/types";
 import { cn } from "@/lib/utils";
-import { Search, SlidersHorizontal, LayoutGrid, List } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, X } from "lucide-react";
+import { UploadPanel } from "@/components/video/upload-panel";
 
 export default function VideosPage() {
   const videos  = useLensStore((s) => s.videos);
   const isAdmin = useLensStore((s) => s.isAdmin());
+  const [showUpload, setShowUpload] = useState(false);
 
   const [search,   setSearch]   = useState("");
   const [status,   setStatus]   = useState<VideoStatus | "all">("all");
@@ -30,9 +32,30 @@ export default function VideosPage() {
       <Header
         title="Videos"
         subtitle={`${filtered.length} of ${videos.length} videos`}
+        actions={
+          <button
+            onClick={() => setShowUpload(!showUpload)}
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-1.5 transition-colors",
+              showUpload
+                ? "bg-zinc-700 text-zinc-200"
+                : "bg-violet-600 hover:bg-violet-700 text-white"
+            )}
+          >
+            {showUpload ? <><X size={12} /> Cancel</> : <><Plus size={12} /> Upload Video</>}
+          </button>
+        }
       />
 
       <div className="p-6 space-y-4 animate-fade-in">
+        {/* Upload panel */}
+        {showUpload && (
+          <div className="bg-[#18181b] border border-white/[0.09] rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-zinc-200 mb-4">Upload New Video</h3>
+            <UploadPanel onSuccess={() => setShowUpload(false)} />
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-52">

@@ -8,6 +8,7 @@ import { UserChip } from "@/components/ui/avatar";
 import { ScoreRing, ConfidenceBar } from "@/components/ui/score-ring";
 import { ReviewPanel } from "@/components/review/review-panel";
 import { FeedbackThread } from "@/components/feedback/feedback-thread";
+import { UploadPanel } from "@/components/video/upload-panel";
 import { useLensStore } from "@/store/lens-store";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -338,7 +339,17 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Versions tab */}
             {tab === "versions" && (
-              <div className="space-y-3 animate-fade-in">
+              <div className="space-y-4 animate-fade-in">
+                {/* Upload new version (execution team) */}
+                {!isAdmin && video.status === "in_revision" && (
+                  <div className="bg-[#18181b] border border-white/[0.09] rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-zinc-200 mb-4">
+                      Upload V{video.currentVersion + 1}
+                    </h3>
+                    <UploadPanel existingVideo={video} onSuccess={() => setTab("overview")} />
+                  </div>
+                )}
+
                 {[...video.versions].reverse().map((v) => (
                   <div key={v.id} className={cn(
                     "bg-[#18181b] border rounded-xl p-4 flex items-center gap-4",
